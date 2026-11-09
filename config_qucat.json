@@ -1,0 +1,9 @@
+{
+    "qucat_configuration":{
+        "pict_root": ".",
+        "k": 2,
+        "significance_level": 0.01,
+        "functionality": 1,
+        "seeding_file": null
+    }
+}

@@ -2,7 +2,9 @@ import time
 import os
 import configparser
 import sys
-import executing
+import tools.qucat.executing
+
+EPSILON = 1e-9 #value used when checking the sum of the probabilities in the program specification file
 
 curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
@@ -273,7 +275,7 @@ def check_full_ps(valid_input, p):
             end = index[i+1]
         for j in range(start,end):
             p_sum += p[j]
-        if p_sum != 1:
+        if (1-EPSILON)>=p_sum or p_sum>=(1+EPSILON): #changed this line
             print("Error: This is not a complete program specification.")
             return False
         else:
@@ -431,337 +433,130 @@ def analyze_config(config):
 def end_running():
     sys.exit(1)
 
-if __name__ == '__main__':
-    # warnings.filterwarnings('ignore')
-    print("".center(60,"="))
-    print('\n')
-    print("Welcome to QuCAT".center(60))
-    print('\n')
-    print("".center(60,"="))
-    user_choice = user_input()
-    while True:
-        if user_choice == '1':
-            template_file()
-            user_choice = user_input()
-        elif user_choice == '2':
-            example_file()
-            user_choice = user_input()
-        elif user_choice == '3':
-            while True:
-                print("Please enter the testing functionality number or go back to previous menu.")
-                scenario_choice = scenario_input()
-                if scenario_choice == '3':
-                    break
-                elif scenario_choice == '1' or scenario_choice == '2' or scenario_choice == '3':
-                    break
-                else:
-                    print("Error: Please type in '1', '2', or '3'.")
-            if scenario_choice == '3':
-                user_choice = user_input()
-                continue
-            print("Please enter the root of your configuration file.(.ini file)")
-            root_config_string = input()
-            if os.path.isfile(root_config_string) != True:
-                print("Error: QuCAT cannot find the configuration file.")
-                user_choice = user_input()
-            else:
-                config = configparser.ConfigParser(allow_no_value=True)
-                try:
-                    config.read(root_config_string, encoding='utf-8')
-                except:
-                    print("Error: QuCAT cannot read the configuration file.")
-                    user_choice = user_input()
-                    continue
-                if check_configuration_file(config) != True:
-                    user_choice = user_input()
-                else:
-                    flag, config_dic = analyze_config(config)
-                    if flag == False:
-                        user_choice = user_input()
-                        continue
-                    else:
-                        print("\nDo you need to upload the file with seeding rows?")
-                        seedrow_choice = seedrow_input()
-                        while True:
-                            if seedrow_choice != '1' and seedrow_choice != '2':
-                                print("Error: Please type in '1' or '2'.")
-                                seedrow_choice = seedrow_input()
-                            else:
-                                break
-                        if seedrow_choice == '1':
-                            print("Please enter the root of your file.(.txt file)")
-                            root_seedrow_string = input()
-                            if os.path.isfile(root_config_string) != True:
-                                print("Error: QuCAT cannot find the file.")
-                                user_choice = user_input()
-                                continue
-                            else:
-                                config_dic['seedrow'] = root_seedrow_string
-                        elif seedrow_choice == '2':
-                            config_dic['seedrow'] = ''
-                        if scenario_choice == '1':
-                            start = time.time()
-                            executing.comb_testing_scenario1(config_dic)
-                            end = time.time()
-                        elif scenario_choice == '2':
-                            start = time.time()
-                            executing.comb_testing_scenario2(config_dic)
-                            end = time.time()
-                        print("The total running time is "+str(end-start)+"s.")
-                        user_choice = user_input()
 
-        elif user_choice == '4':
-            print("Exit :D")
-            sys.exit(1)
+#new function
+def qucat_run(ini_file=None, functionality=1, seedrow_file=None):
+    # print(f"\tini_file --> {ini_file}")
+    # print(f"\tfunctionality --> {functionality}")
+    # print(f"\tseedrow_file --> {seedrow_file}")
+    if ini_file is None:
+        print("please enter the root of your configuration file.(.ini file)")
+    else:
+        if os.path.isfile(ini_file)!=True:
+            return f"Error: QuCat cannot find the configuration file"
         else:
-            print("Error: Please type in '1', '2', '3' or '4'.")
-            user_choice = user_input()
+            config = configparser.ConfigParser(allow_no_value=True)
+            try:
+                config.read(ini_file, encoding='utf-8')
+            except:
+                print("Error: QuCAT cannot read the configuration file.")
+            if check_configuration_file(config) != True:
+                print("Error: The configuration file is not correct")
+            else:
+                flag, config_dic = analyze_config(config)
+                if flag == False:
+                    print("Error: The configuration file is not correct")
+                else:
+                    if seedrow_file is None:
+                        config_dic["seedrow"] = ""
+                    else:
+                        if os.path.isfile(seedrow_file) != True:
+                            print("Error: QuCAT cannot find the seedrow file.")
+                        else:
+                            config_dic['seedrow'] = seedrow_file
+                    if functionality==1:
+                        start = time.time()
+                        tools.qucat.executing.comb_testing_scenario1(config_dic)
+                        end = time.time()
+                    else:
+                        start = time.time()
+                        tools.qucat.executing.comb_testing_scenario2(config_dic)
+                        end = time.time()       
+                    print("\tThe total running time is "+str(end-start)+"s.")             
 
 
+# if __name__ == '__main__':
+#     # warnings.filterwarnings('ignore')
+#     print("".center(60,"="))
+#     print('\n')
+#     print("Welcome to QuCAT".center(60))
+#     print('\n')
+#     print("".center(60,"="))
+#     user_choice = user_input()
+#     while True:
+#         if user_choice == '1':
+#             template_file()
+#             user_choice = user_input()
+#         elif user_choice == '2':
+#             example_file()
+#             user_choice = user_input()
+#         elif user_choice == '3':
+#             while True:
+#                 print("Please enter the testing functionality number or go back to previous menu.")
+#                 scenario_choice = scenario_input()
+#                 if scenario_choice == '3':
+#                     break
+#                 elif scenario_choice == '1' or scenario_choice == '2' or scenario_choice == '3':
+#                     break
+#                 else:
+#                     print("Error: Please type in '1', '2', or '3'.")
+#             if scenario_choice == '3':
+#                 user_choice = user_input()
+#                 continue
+#             print("Please enter the root of your configuration file.(.ini file)")
+#             root_config_string = input()
+#             if os.path.isfile(root_config_string) != True:
+#                 print("Error: QuCAT cannot find the configuration file.")
+#                 user_choice = user_input()
+#             else:
+#                 config = configparser.ConfigParser(allow_no_value=True)
+#                 try:
+#                     config.read(root_config_string, encoding='utf-8')
+#                 except:
+#                     print("Error: QuCAT cannot read the configuration file.")
+#                     user_choice = user_input()
+#                     continue
+#                 if check_configuration_file(config) != True:
+#                     user_choice = user_input()
+#                 else:
+#                     flag, config_dic = analyze_config(config)
+#                     if flag == False:
+#                         user_choice = user_input()
+#                         continue
+#                     else:
+#                         print("\nDo you need to upload the file with seeding rows?")
+#                         seedrow_choice = seedrow_input()
+#                         while True:
+#                             if seedrow_choice != '1' and seedrow_choice != '2':
+#                                 print("Error: Please type in '1' or '2'.")
+#                                 seedrow_choice = seedrow_input()
+#                             else:
+#                                 break
+#                         if seedrow_choice == '1':
+#                             print("Please enter the root of your file.(.txt file)")
+#                             root_seedrow_string = input()
+#                             if os.path.isfile(root_config_string) != True:
+#                                 print("Error: QuCAT cannot find the file.")
+#                                 user_choice = user_input()
+#                                 continue
+#                             else:
+#                                 config_dic['seedrow'] = root_seedrow_string
+#                         elif seedrow_choice == '2':
+#                             config_dic['seedrow'] = ''
+#                         if scenario_choice == '1':
+#                             start = time.time()
+#                             executing.comb_testing_scenario1(config_dic)
+#                             end = time.time()
+#                         elif scenario_choice == '2':
+#                             start = time.time()
+#                             executing.comb_testing_scenario2(config_dic)
+#                             end = time.time()
+#                         print("The total running time is "+str(end-start)+"s.")
+#                         user_choice = user_input()
 
-
-
-
-    #
-    #
-    #
-    #
-    #
-    #
-    #
-    #
-    #         if os.path.isfile(root_config_string) != True:
-    #             print("Error: QuCAT cannot find the configuration file.")
-    #             user_choice = user_input()
-    #             continue
-    #         else:
-    #             config = configparser.ConfigParser(allow_no_value=True)
-    #             try:
-    #                 config.read(root_config_string, encoding='utf-8')
-    #             except:
-    #                 print("Error: QuCAT cannot read the configuration file.")
-    #
-    #             return check_configuration_file(config)
-    #
-    #
-    #
-    #         if read_config(root_config_string) != True:
-    #             user_choice = user_input()
-    #         else:
-    #             analyze_config()
-    #
-    #
-    #
-    #
-    #     elif user_choice == '4':
-    #         sys.exit(1)
-    #     else:
-    #         print("Error: Please type in '1', '2', '3' or '4'.")
-    #         user_choice = user_input()
-    #
-    #
-    #
-    #
-    # while user_choice != '3' and user_choice != '4':
-    #     if user_choice != '1' and user_choice != '2' and user_choice != '4':
-    #         print("Error: Please type in '1', '2', '3' or '4'.")
-    #         user_choice = user_input()
-    #     elif user_choice == '1':
-    #         template_file()
-    #         user_choice = user_input()
-    #     elif user_choice == '2':
-    #         example_file()
-    #         user_choice = user_input()
-    # if user_choice == '3':
-    #     print("please enter the root of your configuration file.(.ini file)")
-    #
-    #     #get configuration file
-    #     root_con_string = input()
-    #     root_con = root_con_string
-    #     START = time.time()
-    #
-    #
-    #     if os.path.isfile(root_con) == True:
-    #         config = configparser.ConfigParser(allow_no_value=True)
-    #         config.read(root_con, encoding='utf-8')
-    #     else:
-    #         print("Error: qucat cannot find the configuration file.")
-    #         end_running()
-    #
-    #     check_configuration_file(config)
-    #
-    #     # get quantum program
-    #     root = config.get('program', 'root')
-    #     if os.path.isfile(root) != True:
-    #         print("Error: qucat cannot find the quantum program file.")
-    #         end_running()
-    #
-    #     root_list = root.split(ROOT)
-    #     program_file = root_list[len(root_list) - 1]
-    #     program_folder = root_list[:len(root_list) - 1]
-    #     program_folder = ROOT.join(str(i) for i in program_folder)
-    #     sys.path.append(program_folder)
-    #     # print(program_file.split('.')[0])
-    #     module_name = program_file.split('.')[0]
-    #
-    #     # get inputID, outputID and numner of qubits
-    #     try:
-    #         num_qubit = int(config.get('program', 'num_qubit'))
-    #     except:
-    #         print("Error: The data type of 'num_qubit' should be an Integer")
-    #         end_running()
-    #     inputID_o = config.get('program', 'inputID').split(',')
-    #     outputID_o = config.get('program', 'outputID').split(',')
-    #     inputID, outputID = check_inputID_outputID(num_qubit, inputID_o, outputID_o)
-    #
-    #     population_size = 10
-    #     offspring_population_size = 10
-    #     max_evaluations = 500
-    #     if config.get('GA_parameter', 'population_size') != None:
-    #         try:
-    #             population_size = int(config.get('GA_parameter', 'population_size'))
-    #         except:
-    #             print("Error: The data type of 'population_size' should be an Integer")
-    #             end_running()
-    #     if config.get('GA_parameter', 'offspring_population_size') != None:
-    #         try:
-    #             offspring_population_size = int(config.get('GA_parameter', 'offspring_population_size'))
-    #         except:
-    #             print("Error: The data type of 'off_population_size' should be an Integer")
-    #             end_running()
-    #
-    #     if config.get('GA_parameter', 'max_evaluations') != None:
-    #         try:
-    #             max_evaluations = int(config.get('GA_parameter', 'max_evaluations'))
-    #         except:
-    #             print("Error: The data type of 'max_evaluations' should be an Integer")
-    #             end_running()
-    #
-    #     if os.path.isfile(root) != True:
-    #         print("Error: qucat cannot find the quantum program file.")
-    #         end_running()
-    #
-    #     M_flag = False
-    #     beta = 0
-    #     if config.has_option('qucat_configuration','M') == True:
-    #         M_flag == True
-    #         try:
-    #             M = int(config.get('qusbt_configuration','M'))
-    #         except:
-    #             print("Error: The data type of 'M' should be an Integer.")
-    #             end_running()
-    #         if config.has_option('qusbt_configuration', 'beta') == True:
-    #             print("Error: You should use either 'M' or 'beta'.")
-    #             end_running()
-    #     elif config.has_option('qusbt_configuration','beta') == True:
-    #         try:
-    #             beta = float(config.get('qusbt_configuration','beta'))
-    #         except:
-    #             print("Error: The data type of 'beta' should be a Float.")
-    #             end_running()
-    #     else:
-    #         beta = 0.05
-    #
-    #     confidence_level = 0.01
-    #     if config.has_option('qusbt_configuration', 'confidence_level') == True:
-    #         try:
-    #             confidence_level = float(config.get('qusbt_configuration', 'confidence_level'))
-    #         except:
-    #             print("Error: The data type of 'confidence_level' should be a Float.")
-    #             end_running()
-    #
-    #     mutation_probability_flag = False
-    #     if config.has_option('GA_configuration', 'mutation_probability') == True:
-    #         mutation_probability_flag = True
-    #         try:
-    #             mutation_probability = float(config.get('GA_configuration', 'crossover_probability'))
-    #         except:
-    #             print("Error: The data type of 'mutation_probability' should be a Float.")
-    #             end_running()
-    #         if mutation_probability >= 1:
-    #             print("Error: The value of 'mutation_probability' should be a Float smaller than 1.0.")
-    #             end_running()
-    #
-    #     mutation_distribution_index = 20
-    #     if config.has_option('GA_configuration', 'mutation_distribution_index') == True:
-    #         try:
-    #             mutation_distribution_index = int(config.get('GA_configuration', 'mutation_distribution_index'))
-    #         except:
-    #             print("Error: The data type of 'mutation_distribution_index' should be an Integer.")
-    #             end_running()
-    #
-    #     crossover_distribution_index = 20
-    #     if config.has_option('GA_configuration', 'crossover_distribution_index') == True:
-    #         try:
-    #             crossover_distribution_index = int(config.get('GA_configuration', 'crossover_distribution_index'))
-    #         except:
-    #             print("Error: The data type of 'crossover_distribution_index' should be an Integer.")
-    #             end_running()
-    #
-    #     crossover_probability = 0.9
-    #     if config.has_option('GA_configuration', 'crossover_probability') == True:
-    #         try:
-    #             crossover_probability = float(config.get('GA_configuration', 'crossover_probability'))
-    #         except:
-    #             print("Error: The data type of 'crossover_probability' should be a Float.")
-    #             end_running()
-    #         if crossover_probability >= 1:
-    #             print("Error: The value of 'crossover_probability' should be a Float smaller than 1.0.")
-    #             end_running()
-    #
-    #
-    #     #PS
-    #     valid_input = []
-    #     valid_output = []
-    #     p = []
-    #     ps = config.items('program_specification')
-    #     ps = expand_ps(ps, inputID, outputID)
-    #
-    #     # print(ps)
-    #     #print("origin:"+str(ps))
-    #     if check_unique_pair(ps) == False:
-    #         print("There are duplicate input-output pairs in the program specification.")
-    #         end_running()
-    #     #sort PS according to input and output
-    #     ps.sort(key=lambda x:x[0])
-    #     #print("new:"+str(ps))
-    #     for i in range(len(ps)):
-    #         valid_input_item = ps[i][0][:len(inputID)]
-    #         valid_output_item = ps[i][0][len(inputID)+1:]
-    #         check_bin(valid_input_item,len(inputID))
-    #         check_bin(valid_output_item,len(outputID))
-    #         valid_input.append(valid_input_item)
-    #         valid_output.append(valid_output_item)
-    #         p.append(float(ps[i][1]))
-    #     check_full_ps(valid_input, p)
-    #
-    #     config_dic = {}
-    #     config_dic['program_folder'] = program_folder
-    #     config_dic['root'] = root_con_string
-    #     config_dic['module_name'] = module_name
-    #     config_dic['num_qubit'] = num_qubit
-    #     config_dic['inputID'] = inputID
-    #     config_dic['outputID'] = outputID
-    #     if M_flag == True:
-    #         config_dic['M'] = M
-    #     else:
-    #         config_dic['beta'] = beta
-    #     config_dic['confidence_level'] = confidence_level
-    #     config_dic['population_size'] = population_size
-    #     config_dic['offspring_population_size'] = offspring_population_size
-    #     config_dic['max_evaluations'] = max_evaluations
-    #     config_dic['valid_input'] = valid_input
-    #     config_dic['valid_output'] = valid_output
-    #     config_dic['p'] = p
-    #     config_dic['crossover_probability'] = crossover_probability
-    #     config_dic['crossover_distribution_index'] = crossover_distribution_index
-    #     if mutation_probability_flag == True:
-    #         config_dic['mutation_probability'] = mutation_probability
-    #     config_dic['mutation_distribution_index'] = mutation_distribution_index
-    #     Search.search(config_dic)
-    #     # Search.search(root, module_name, alg, len(inputID), beta)
-    #     END = time.time()
-    #     T1 = END-START
-    #
-    # elif user_choice == '4':
-    #     print("Exit :D")
+#         elif user_choice == '4':
+#             print("Exit :D")
+#             sys.exit(1)
+#         else:
+#             print("Error: Please type in '1', '2', '3' or '4'.")
+#             user_choice = user_input()

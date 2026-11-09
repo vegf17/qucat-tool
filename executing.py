@@ -1,7 +1,7 @@
 import os
 import numpy as np
-from generating import generate_test_suite
-from GenerateUnitTest import GenerateUnitTest
+from tools.qucat.generating import generate_test_suite
+from tools.qucat.GenerateUnitTest import GenerateUnitTest
 import time
 
 
@@ -13,27 +13,37 @@ from qiskit import (
     QuantumCircuit,
     QuantumRegister,
     ClassicalRegister,
-    execute,
-    Aer,
+    transpile
+    #execute,
+    #Aer,
 )
-from qiskit.tools.visualization import circuit_drawer
+from qiskit_aer import AerSimulator
+from qiskit.visualization import circuit_drawer
 from qiskit import QuantumCircuit, assemble
 import importlib
 from rpy2 import robjects as robjects
 
+DATA_FOLDER = "./tools/qucat/data"
+RESULT_FOLDER = "./data/results/qucat"
 
-
-def execute_quantum_program(inputID, outputID, num_qubit, input, module_name, times):  # module_name is the name of the quantum program file
+def execute_quantum_program(root, inputID, outputID, num_qubit, input, module_name, times):  # module_name is the name of the quantum program file
     q = QuantumRegister(num_qubit)
     c = ClassicalRegister(len(outputID))
-    qc = QuantumCircuit(q, c)
+    qc_init = QuantumCircuit(q, c)
+    qc_qasm = QuantumCircuit.from_qasm_file(root)
     for j in range(len(inputID)):
         if input[len(inputID) - 1 - j] == '1':
-            qc.x(inputID[j])
-    module = importlib.import_module(module_name)
-    run_method = getattr(module, "run")
-    run_method(qc)
-    result = execute(qc, Aer.get_backend('qasm_simulator'), shots=times).result().get_counts(qc)
+            qc_init.x(inputID[j])
+    qc = qc_init.compose(qc_qasm)
+    # module = importlib.import_module(module_name)
+    # run_method = getattr(module, "run")
+    # run_method(qc)
+
+    #result = execute(qc, Aer.get_backend('qasm_simulator'), shots=times).result().get_counts(qc)
+    simulator = AerSimulator()
+    compiled_circuit = transpile(qc,simulator,optimization_level=0)
+    job = simulator.run(compiled_circuit,shots=times)
+    result = job.result().get_counts()
     return result
 
 
@@ -55,7 +65,7 @@ def execute_test_case(input, config_dic):
             count_times += 1
 
     #!!!!!
-    result = execute_quantum_program(config_dic['inputID'], config_dic['outputID'], config_dic['num_qubit'], input, config_dic['module_name'], count_times*100)
+    result = execute_quantum_program(config_dic['root'], config_dic['inputID'], config_dic['outputID'], config_dic['num_qubit'], input, config_dic['module_name'], count_times*100)
 
     # judge wrong outputs
     for key in list(result.keys()):
@@ -93,11 +103,13 @@ def execute_test_case(input, config_dic):
 
 # doing testing
 def comb_testing_scenario1(config_dic):
-    result_root = os.path.join(config_dic['program_folder'], config_dic['module_name'], config_dic['module_name']+'_FunOne')
+    result_root = os.path.join(RESULT_FOLDER, config_dic['module_name'], config_dic['module_name']+'_FunOne')
+    # print(f"\t\tcomb_testing_scenario1 (result_root):{result_root}")
     if not os.path.exists(result_root):
         os.makedirs(result_root)
     generate_test_suite(config_dic, 'FunOne', config_dic['k'])
     test_suite_file = os.path.join(result_root, config_dic['module_name'] + '_input_k' + str(config_dic['k']) + '.txt')
+    # print(f"\t\tcomb_testing_scenario1 (test_suite_file):{test_suite_file}")
     execution_time = 0
     with open(test_suite_file, 'r') as input_file:
         input_file.readline()
@@ -121,15 +133,16 @@ def comb_testing_scenario1(config_dic):
             if test_result != 'PASS':
                 count_fail += 1
     test_result_file = os.path.join(result_root, config_dic['module_name'] + '_result_k' + str(config_dic['k']) + '.txt')
-    GenerateUnitTest.generateUnitTestClass(config_dic['module_name'], config_dic['inputID'], config_dic['outputID'], config_dic['num_qubit'], inputs_list, inputs_str_list, counts_list, config_dic['program_folder'], 1, config_dic['k'])
+    # print(f"\t\tcomb_testing_scenario1 (test_result_file):{test_result_file}")
+    GenerateUnitTest.generateUnitTestClass(config_dic['module_name'], config_dic['inputID'], config_dic['outputID'], config_dic['num_qubit'], inputs_list, inputs_str_list, counts_list, RESULT_FOLDER, 1, config_dic['k'])
     with open(test_result_file, 'w') as result_file:
         result_file.write('inputs' + '\t' + 'outputs' + '\t' + 'result' +'\n')
-        print("The number of test cases:" + str(len(list_data)))
+        print("\tThe number of test cases:" + str(len(list_data)))
         for i in range(len(list_data)):
             result_file.write(list_data[i][0] + '\t' + str(list_data[i][1]) + '\t' + list_data[i][2])
             result_file.write('\n')
-    print("The number of failing test cases:" + str(count_fail))
-    print("The execution time for running the quantum program is "+str(execution_time)+"s.")
+    # print("\tThe number of failing test cases:" + str(count_fail))
+    # print("\tThe execution time for running the quantum program is "+str(execution_time)+"s.")
 
 
 
@@ -140,7 +153,8 @@ def comb_testing_scenario1(config_dic):
 
 
 def comb_testing_scenario2(config_dic):
-    result_root = os.path.join(config_dic['program_folder'], config_dic['module_name'], config_dic['module_name']+'_FunTwo')
+    result_root = os.path.join(RESULT_FOLDER, config_dic['module_name'], config_dic['module_name']+'_FunTwo')
+    # print(f"\t\tcomb_testing_scenario2 (result_root):{result_root}")
     if not os.path.exists(result_root):
         os.makedirs(result_root)
     #print("++++++configuration dic o ="+str(config_dic['o'])+"+++++++")
@@ -175,7 +189,8 @@ def comb_testing_scenario2(config_dic):
         if flag_fail == True:
             break
     test_result_file = os.path.join(result_root, config_dic['module_name'] + '_result' + '.txt')
-    GenerateUnitTest.generateUnitTestClass(config_dic['module_name'], config_dic['inputID'], config_dic['outputID'], config_dic['num_qubit'], inputs_list, inputs_str_list, counts_list, config_dic['program_folder'], 2, config_dic['k'])
+    GenerateUnitTest.generateUnitTestClass(config_dic['module_name'], config_dic['inputID'], config_dic['outputID'], config_dic['num_qubit'], inputs_list, inputs_str_list, counts_list, RESULT_FOLDER, 2, config_dic['k'])
+    # print(f"\t\tcomb_testing_scenario1 (test_result_file):{test_result_file}")
     with open(test_result_file, 'w') as result_file:
         result_file.write('inputs' + '\t' + 'outputs' + '\t' + 'result' + '\n')
         for i in range(len(list_data)):

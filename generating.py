@@ -8,20 +8,26 @@ import subprocess
 #'module_name'
 #'pict_path'可选,默认为 '.'
 
+DATA_FOLDER = "./tools/qucat/data"
+RESULT_FOLDER = "./data/results/qucat"
 
 def generate_test_file(config_dic):
     #'/opt/homebrew/Cellar/pict/3.7.4/bin/pict'
-    test_root = os.path.join(config_dic['program_folder'], config_dic['module_name'])
+    test_root = os.path.join(RESULT_FOLDER, config_dic['module_name'])
+    # print(f"\t\tgenerate_test_file (test_root):{test_root}")
     if not os.path.exists(test_root):
         os.makedirs(test_root)
     test_file_root = os.path.join(test_root, 'p'+ str(config_dic['n']) + '.txt')
+    # print(f"\t\tgenerate_test_file (test_file_root):{test_file_root}")
     with open(test_file_root,'w') as test_file:
         for i in range(len(config_dic['inputID'])):
             test_file.write('q'+str(config_dic['inputID'][i])+':0,1'+'\n')
 
 def generate_test_suite(config_dic, scenario, k):
-    test_root = os.path.join(config_dic['program_folder'], config_dic['module_name'])
-    result_root = os.path.join(config_dic['program_folder'], config_dic['module_name'], config_dic['module_name']+ '_'+ scenario)
+    test_root = os.path.join(RESULT_FOLDER, config_dic['module_name'])
+    result_root = os.path.join(RESULT_FOLDER, config_dic['module_name'], config_dic['module_name']+ '_'+ scenario)
+    # print(f"\t\tgenerate_test_suite (test_root):{test_root}")
+    # print(f"\t\tgenerate_test_suite (result_root):{result_root}")
     seedrow = ''
     if config_dic['seedrow'] != '':
         seedrow = ' /e:'+config_dic['seedrow']+' '
@@ -31,6 +37,8 @@ def generate_test_suite(config_dic, scenario, k):
     if not os.path.exists(test_file_root):
         generate_test_file(config_dic)
     test_suite_file = os.path.join(result_root, config_dic['module_name'] + '_input_k' + str(k) + '.txt')
+    # print(f"\t\tgenerate_test_suite (test_suite_file):{test_suite_file}")
+    # print(f"\t\tgenerate_test_suite (test_file_root):{test_file_root}")
 
    # print("pict " + test_file_root + " /o:" + str(o) + " /r > " + test_suite_file)
     subprocess.run("pict " + test_file_root + " /o:" + str(k) + seedrow +" /r > " + test_suite_file,
